@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // استدعاء صفحة تسجيل الدخول
+import 'login_page.dart'; // استدعاء ملف صفحة اللوجن الخاص بصديقتك
 
 void main() {
   runApp(const HabitTrackerApp());
@@ -11,13 +11,12 @@ class HabitTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Habit Tracker',
       debugShowCheckedModeBanner: false,
+      title: 'Habit Tracker App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        primarySwatch: Colors.blue,
       ),
-      home: LoginPage(), // تم إزالة const من هنا
+      home: const LoginPage(), // تشغيل صفحة اللوجن كواجهة أساسية للتطبيق
     );
   }
 }
