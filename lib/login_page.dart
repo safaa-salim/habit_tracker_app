@@ -1,5 +1,30 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // لاستيراد UserAccount و MyHomePage
+import 'package:shared_preferences/shared_preferences.dart';
+import 'home_page.dart'; // استدعاء صفحتك الرئيسية المستقلة الحقيقية
+
+// نموذج بيانات المستخدم لكي يتعرف عليه التطبيق
+class UserAccount {
+  final String name;
+  final String email;
+
+  UserAccount({required this.name, required this.email});
+
+  // تحويل الكائن إلى Map لتسهيل الحفظ
+  Map<String, String> toJson() => {'name': name, 'email': email};
+
+  // إنشاء كائن من Map عند القراءة
+  factory UserAccount.fromJson(Map<String, dynamic> json) {
+    return UserAccount(
+      name: json['name'] ?? '',
+      email: json['email'] ?? '',
+    );
+  }
+}
+
+// قائمة الحسابات المسجلة
+List<UserAccount> registeredAccounts = [
+  UserAccount(name: 'مستخدم تجريبي', email: 'test@habit.com'),
+];
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -15,13 +40,42 @@ class _LoginPageState extends State<LoginPage> {
   String? _errorMessage;
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedAccounts(); // تحميل الحسابات المخزنة مسبقاً عند فتح التطبيق
+  }
+
+  // دالة لتحميل الحسابات المحفوظة من SharedPreferences
+  Future<void> _loadSavedAccounts() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? savedAccountsStrings = prefs.getStringList('saved_accounts');
+    
+    if (savedAccountsStrings != null) {
+      setState(() {
+        // تحويل النصوص المخزنة إلى قائمة من كائنات UserAccount وتجنب التكرار
+        for (var accStr in savedAccountsStrings) {
+          // طريقة بسيطة لتحليل البيانات المحفوظة
+          final parts = accStr.split('|');
+          if (parts.length == 2) {
+            String name = parts[0];
+            String email = parts[1];
+            if (!registeredAccounts.any((acc) => acc.email == email)) {
+              registeredAccounts.add(UserAccount(name: name, email: email));
+            }
+          }
+        }
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       String enteredName = _nameController.text.trim();
       String enteredEmail = _emailController.text.trim();
@@ -31,6 +85,12 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (accountExists) {
+        // حفظ الجلسة الحالية للمستخدم حتى يفتح التطبيق مباشرة في المرة القادمة إن أردت
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('current_user_name', enteredName);
+        await prefs.setString('current_user_email', enteredEmail);
+
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -153,7 +213,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// صفحة إنشاء حساب جديد (SignupPage) يمكن وضعها هنا أو في ملف مستقل
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
 
@@ -174,7 +233,27 @@ class _SignupPageState extends State<SignupPage> {
     super.dispose();
   }
 
-  void _signup() {
+  // دالة لحفظ الحساب الجديد في SharedPreferences
+  Future<void> _saveNewAccount(String name, String email) async {
+    registeredAccounts.add(UserAccount(name: name, email: email));
+    
+    final prefs = await SharedPreferences.getInstance();
+    
+    // استخراج الحسابات الحالية كقائمة نصوص
+    List<String> savedAccountsStrings = prefs.getStringList('saved_accounts') ?? [];
+    
+    // إضافة الحساب الجديد بصيغة (الاسم|البريد)
+    savedAccountsStrings.add('$name|$email');
+    
+    // حفظ القائمة المحدثة
+    await prefs.setStringList('saved_accounts', savedAccountsStrings);
+    
+    // حفظ المستخدم الحالي لتسجيل الدخول التلقائي لاحقاً إذا رغبت
+    await prefs.setString('current_user_name', name);
+    await prefs.setString('current_user_email', email);
+  }
+
+  Future<void> _signup() async {
     if (_formKey.currentState!.validate()) {
       String newName = _nameController.text.trim();
       String newEmail = _emailController.text.trim();
@@ -188,8 +267,10 @@ class _SignupPageState extends State<SignupPage> {
           _errorMessage = 'هذا الحساب موجود من قبل! يجدر بك تسجيل الدخول بدلاً من ذلك.';
         });
       } else {
-        registeredAccounts.add(UserAccount(name: newName, email: newEmail));
+        // تنفيذ الحفظ الفعلي
+        await _saveNewAccount(newName, newEmail);
 
+        if (!mounted) return;
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(

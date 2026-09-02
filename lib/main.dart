@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // استدعاء ملف صفحة اللوجن الخاص بصديقتك
+import 'login_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const HabitTrackerApp());
 }
 
@@ -16,7 +17,7 @@ class HabitTrackerApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const LoginPage(), // تشغيل صفحة اللوجن كواجهة أساسية للتطبيق
+      home: const LoginPage(),
     );
   }
 }
