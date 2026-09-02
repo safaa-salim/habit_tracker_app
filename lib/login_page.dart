@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'main.dart'; // لاستيراد UserAccount و MyHomePage
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -9,285 +9,168 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  String? _errorMessage;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  
+  List<String> _savedEmails = [];
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadSavedEmails();
   }
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      String enteredName = _nameController.text.trim();
-      String enteredEmail = _emailController.text.trim();
-
-      bool accountExists = registeredAccounts.any(
-        (acc) => acc.email == enteredEmail && acc.name == enteredName,
-      );
-
-      if (accountExists) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyHomePage(
-              title: 'تطبيق العادات',
-              userName: enteredName,
-            ),
-          ),
-        );
-      } else {
-        setState(() {
-          _errorMessage = 'الاسم أو البريد الإلكتروني غير مسجلين، يجدر بك إنشاء حساب جديد.';
-        });
-      }
+  Future<void> _loadSavedEmails() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? emails = prefs.getStringList('saved_emails_list');
+    if (emails != null) {
+      setState(() {
+        _savedEmails = emails;
+        if (_savedEmails.isNotEmpty) {
+          _emailController.text = _savedEmails.last;
+        }
+      });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('تسجيل الدخول'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.account_circle,
-                    size: 80,
-                    color: Colors.deepPurple,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'أهلاً بك في تطبيق العادات',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  if (_errorMessage != null) ...[
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'الرجاء إدخال الاسم';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'البريد الإلكتروني',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'الرجاء إدخال البريد الإلكتروني';
-                      }
-                      if (!value.contains('@')) {
-                        return 'البريد الإلكتروني غير صحيح';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _login,
-                      child: const Text(
-                        'دخول',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignupPage(),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'ليس لديك حساب؟ إنشاء حساب جديد',
-                      style: TextStyle(fontSize: 16, color: Colors.deepPurple),
-                    ),
-                  ),
-                ],
-              ),
+  bool _isValidEmail(String email) {
+    return email.toLowerCase().endsWith('@gmail.com');
+  }
+
+  Future<void> _handleLogin() async {
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+    
+    if (email.isEmpty && password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إدخال البريد الإلكتروني وكلمة المرور')),
+      );
+      return;
+    }
+    
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إدخال البريد الإلكتروني')),
+      );
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('يجب أن يكون البريد الإلكتروني من نوع gmail.com')),
+      );
+      return;
+    }
+
+    if (password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('الرجاء إدخال كلمة المرور')),
+      );
+      return;
+    }
+
+    // التحقق من أن كلمة المرور لا تقل عن 5 خانات
+    if (password.length < 5) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('كلمة المرور يجب ألا تقل عن 5 خانات')),
+      );
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String> emails = prefs.getStringList('saved_emails_list') ?? [];
+    
+    if (!emails.contains(email)) {
+      emails.add(email);
+      await prefs.setStringList('saved_emails_list', emails);
+    }
+
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: const Text('تم تسجيل الدخول بنجاح')),
+          body: Center(
+            child: Text(
+              'مرحباً بكِ في التطبيق!\nتم تسجيل الدخول بالبريد: $email\nفي انتظار دمج الصفحة الرئيسية من صديقتك.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 18),
             ),
           ),
         ),
       ),
     );
   }
-}
-
-// صفحة إنشاء حساب جديد (SignupPage) يمكن وضعها هنا أو في ملف مستقل
-class SignupPage extends StatefulWidget {
-  const SignupPage({super.key});
-
-  @override
-  State<SignupPage> createState() => _SignupPageState();
-}
-
-class _SignupPageState extends State<SignupPage> {
-  final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  String? _errorMessage;
 
   @override
   void dispose() {
-    _nameController.dispose();
     _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
-  }
-
-  void _signup() {
-    if (_formKey.currentState!.validate()) {
-      String newName = _nameController.text.trim();
-      String newEmail = _emailController.text.trim();
-
-      bool alreadyExists = registeredAccounts.any(
-        (acc) => acc.email == newEmail,
-      );
-
-      if (alreadyExists) {
-        setState(() {
-          _errorMessage = 'هذا الحساب موجود من قبل! يجدر بك تسجيل الدخول بدلاً من ذلك.';
-        });
-      } else {
-        registeredAccounts.add(UserAccount(name: newName, email: newEmail));
-
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => MyHomePage(
-              title: 'تطبيق العادات',
-              userName: newName,
-            ),
-          ),
-          (route) => false,
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('إنشاء حساب جديد'),
+        title: const Text('تسجيل الدخول'),
+        centerTitle: true,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: SingleChildScrollView(
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.person_add,
-                    size: 80,
-                    color: Colors.deepPurple,
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Autocomplete<String>(
+              optionsBuilder: (TextEditingValue textEditingValue) {
+                if (textEditingValue.text.isEmpty) {
+                  return _savedEmails;
+                }
+                return _savedEmails.where((String option) {
+                  return option.toLowerCase().contains(textEditingValue.text.toLowerCase());
+                });
+              },
+              onSelected: (String selection) {
+                _emailController.text = selection;
+              },
+              fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                if (_emailController.text.isNotEmpty && controller.text.isEmpty) {
+                  controller.text = _emailController.text;
+                }
+                
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onChanged: (value) {
+                    _emailController.text = value;
+                  },
+                  decoration: const InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    hintText: 'example@gmail.com',
+                    border: OutlineInputBorder(),
                   ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'انضم إلينا الآن',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  if (_errorMessage != null) ...[
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'الاسم',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'الرجاء إدخال الاسم';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: const InputDecoration(
-                      labelText: 'البريد الإلكتروني',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'الرجاء إدخال البريد الإلكتروني';
-                      }
-                      if (!value.contains('@')) {
-                        return 'البريد الإلكتروني غير صحيح';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _signup,
-                      child: const Text(
-                        'إنشاء الحساب',
-                        style: TextStyle(fontSize: 18),
-                      ),
-                    ),
-                  ),
-                ],
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _passwordController,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'كلمة المرور',
+                border: OutlineInputBorder(),
               ),
             ),
-          ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _handleLogin,
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
+              child: const Text('دخول', style: TextStyle(fontSize: 18)),
+            ),
+          ],
         ),
       ),
     );
