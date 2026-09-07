@@ -1,5 +1,7 @@
 name: habit_tracker_app
+
 description: "A new Flutter project."
+
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -10,12 +12,23 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.3
+
+  # الإشعارات
+  flutter_local_notifications: ^22.3.0
+
+  # تشغيل ومعاينة أصوات التنبيهات
+  audioplayers: ^6.8.1
+
+  # جدولة الإشعارات حسب المنطقة الزمنية
+  timezone: ^0.11.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
   flutter_lints: ^6.0.0
 
 flutter:
