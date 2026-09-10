@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
 import 'dart:convert';
 import 'notification_service.dart';
 
@@ -87,10 +88,30 @@ class _MyHomePageState extends State<MyHomePage>
 
   List<Habit> _habits = [];
 
+  final AudioPlayer _previewPlayer = AudioPlayer();
+
   final List<String> _sounds = List.generate(
     15,
     (index) => 'sound_${(index + 1).toString().padLeft(2, '0')}',
   );
+
+  final Map<String, String> _soundFiles = {
+    'sound_01': 'sounds/mixkit-access-allowed-tone-2869.wav',
+    'sound_02': 'sounds/mixkit-atm-cash-machine-key-press-2841.wav',
+    'sound_03': 'sounds/mixkit-bell-notification-933.wav',
+    'sound_04': 'sounds/mixkit-clear-announce-tones-2861.wav',
+    'sound_05': 'sounds/mixkit-confirmation-tone-2867.wav',
+    'sound_06': 'sounds/mixkit-correct-answer-tone-2870 (1).wav',
+    'sound_07': 'sounds/mixkit-correct-answer-tone-2870.wav',
+    'sound_08': 'sounds/mixkit-digital-quick-tone-2866.wav',
+    'sound_09': 'sounds/mixkit-guitar-notification-alert-2320.wav',
+    'sound_10': 'sounds/mixkit-happy-bells-notification-937.wav',
+    'sound_11': 'sounds/mixkit-smartphone-typing-1393.wav',
+    'sound_12': 'sounds/mixkit-software-interface-back-2575.wav',
+    'sound_13': 'sounds/mixkit-toy-telephone-ring-1351.wav',
+    'sound_14': 'sounds/mixkit-waiting-ringtone-1354.wav',
+    'sound_15': 'sounds/mixkit-wrong-answer-fail-notification-946.wav',
+  };
 
   @override
   void initState() {
@@ -107,7 +128,28 @@ class _MyHomePageState extends State<MyHomePage>
   @override
   void dispose() {
     _tabController.dispose();
+    _previewPlayer.dispose();
     super.dispose();
+  }
+
+  Future<void> _previewSound(String soundName) async {
+    try {
+      await _previewPlayer.stop();
+
+      final file = _soundFiles[soundName];
+
+      if (file != null) {
+        await _previewPlayer.play(
+          AssetSource(file),
+        );
+      }
+    } catch (e) {
+      debugPrint('Sound preview error: $e');
+    }
+  }
+
+  Future<void> _stopPreview() async {
+    await _previewPlayer.stop();
   }
 
   Future<void> _loadSettingsAndHabits() async {
@@ -192,21 +234,14 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   String _formatTimeOfDay(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0
-        ? 12
-        : time.hourOfPeriod;
-
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
     final minute = time.minute.toString().padLeft(2, '0');
 
     if (_isEnglish) {
-      final period =
-          time.period == DayPeriod.am ? 'AM' : 'PM';
-
+      final period = time.period == DayPeriod.am ? 'AM' : 'PM';
       return '$hour:$minute $period';
     } else {
-      final period =
-          time.period == DayPeriod.am ? 'ص' : 'م';
-
+      final period = time.period == DayPeriod.am ? 'ص' : 'م';
       return '$hour:$minute $period';
     }
   }
@@ -218,12 +253,10 @@ class _MyHomePageState extends State<MyHomePage>
     String cleanTime = time.trim();
 
     bool isPM =
-        cleanTime.contains('PM') ||
-        cleanTime.contains('م');
+        cleanTime.contains('PM') || cleanTime.contains('م');
 
     bool isAM =
-        cleanTime.contains('AM') ||
-        cleanTime.contains('ص');
+        cleanTime.contains('AM') || cleanTime.contains('ص');
 
     cleanTime = cleanTime
         .replaceAll('AM', '')
@@ -235,6 +268,7 @@ class _MyHomePageState extends State<MyHomePage>
     final parts = cleanTime.split(':');
 
     int hour = int.tryParse(parts[0]) ?? 12;
+
     int minute = parts.length > 1
         ? int.tryParse(parts[1]) ?? 0
         : 0;
@@ -267,13 +301,12 @@ class _MyHomePageState extends State<MyHomePage>
 
       await NotificationService.scheduleHabitNotification(
         id: int.parse(
-          '${habit.id.hashCode.abs()}$i'
-              .substring(
-                0,
-                '${habit.id.hashCode.abs()}$i'.length > 9
-                    ? 9
-                    : '${habit.id.hashCode.abs()}$i'.length,
-              ),
+          '${habit.id.hashCode.abs()}$i'.substring(
+            0,
+            '${habit.id.hashCode.abs()}$i'.length > 9
+                ? 9
+                : '${habit.id.hashCode.abs()}$i'.length,
+          ),
         ),
         title: habit.title,
         dateTime: dateTime,
@@ -286,8 +319,7 @@ class _MyHomePageState extends State<MyHomePage>
     Habit habit,
   ) async {
     for (int i = 0; i < habit.times.length; i++) {
-      final String rawId =
-          '${habit.id.hashCode.abs()}$i';
+      final String rawId = '${habit.id.hashCode.abs()}$i';
 
       final int id = int.parse(
         rawId.substring(
@@ -340,9 +372,7 @@ class _MyHomePageState extends State<MyHomePage>
         habitToEdit != null
             ? List.from(habitToEdit.times)
             : [
-                _isEnglish
-                    ? '12:00 PM'
-                    : '12:00 م'
+                _isEnglish ? '12:00 PM' : '12:00 م'
               ];
 
     String chosenSound =
@@ -362,8 +392,7 @@ class _MyHomePageState extends State<MyHomePage>
                     ? const Color(0xFF1E1E2C)
                     : Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 title: Text(
                   habitToEdit == null
@@ -381,25 +410,20 @@ class _MyHomePageState extends State<MyHomePage>
                   ),
                 ),
                 content: SizedBox(
-                  width:
-                      MediaQuery.of(context).size.width *
-                          0.8,
+                  width: MediaQuery.of(context).size.width * 0.8,
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TextField(
-                          controller:
-                              titleController,
+                          controller: titleController,
                           style: TextStyle(
                             color: _isDarkMode
                                 ? Colors.white
                                 : Colors.black87,
                           ),
-                          decoration:
-                              InputDecoration(
+                          decoration: InputDecoration(
                             labelText: _isEnglish
                                 ? 'Habit Title'
                                 : 'اسم المهمة',
@@ -413,24 +437,19 @@ class _MyHomePageState extends State<MyHomePage>
 
                         const SizedBox(height: 14),
 
-                        DropdownButtonFormField<
-                            HabitFrequency>(
+                        DropdownButtonFormField<HabitFrequency>(
                           value: chosenFrequency,
-                          dropdownColor:
-                              _isDarkMode
-                                  ? const Color(
-                                      0xFF2C2C3E)
-                                  : Colors.white,
-                          decoration:
-                              InputDecoration(
+                          dropdownColor: _isDarkMode
+                              ? const Color(0xFF2C2C3E)
+                              : Colors.white,
+                          decoration: InputDecoration(
                             labelText: _isEnglish
                                 ? 'Frequency'
                                 : 'نوع المهمة',
                           ),
                           items: [
                             DropdownMenuItem(
-                              value:
-                                  HabitFrequency.daily,
+                              value: HabitFrequency.daily,
                               child: Text(
                                 _isEnglish
                                     ? 'Daily Habit'
@@ -438,8 +457,7 @@ class _MyHomePageState extends State<MyHomePage>
                               ),
                             ),
                             DropdownMenuItem(
-                              value:
-                                  HabitFrequency.monthly,
+                              value: HabitFrequency.monthly,
                               child: Text(
                                 _isEnglish
                                     ? 'Monthly Habit'
@@ -447,8 +465,7 @@ class _MyHomePageState extends State<MyHomePage>
                               ),
                             ),
                             DropdownMenuItem(
-                              value:
-                                  HabitFrequency.yearly,
+                              value: HabitFrequency.yearly,
                               child: Text(
                                 _isEnglish
                                     ? 'Yearly Habit'
@@ -468,19 +485,15 @@ class _MyHomePageState extends State<MyHomePage>
                         const SizedBox(height: 14),
 
                         TextField(
-                          controller:
-                              targetController,
-                          keyboardType:
-                              TextInputType.number,
-                          decoration:
-                              InputDecoration(
+                          controller: targetController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
                             labelText: _isEnglish
                                 ? 'Repetition Count'
                                 : 'عدد مرات التكرار',
                           ),
                           onChanged: (val) {
-                            int count =
-                                int.tryParse(val) ?? 1;
+                            int count = int.tryParse(val) ?? 1;
 
                             if (count < 1) {
                               count = 1;
@@ -491,24 +504,17 @@ class _MyHomePageState extends State<MyHomePage>
                             }
 
                             setDialogState(() {
-                              if (chosenTimes.length <
-                                  count) {
-                                while (chosenTimes.length <
-                                    count) {
+                              if (chosenTimes.length < count) {
+                                while (chosenTimes.length < count) {
                                   chosenTimes.add(
                                     _isEnglish
                                         ? '12:00 PM'
                                         : '12:00 م',
                                   );
                                 }
-                              } else if (chosenTimes
-                                      .length >
-                                  count) {
+                              } else if (chosenTimes.length > count) {
                                 chosenTimes =
-                                    chosenTimes.sublist(
-                                  0,
-                                  count,
-                                );
+                                    chosenTimes.sublist(0, count);
                               }
                             });
                           },
@@ -521,13 +527,10 @@ class _MyHomePageState extends State<MyHomePage>
                               ? 'Notification Times'
                               : 'أوقات التنبيه',
                           style: TextStyle(
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                             color: _isDarkMode
-                                ? const Color(
-                                    0xFFA29BFE)
-                                : const Color(
-                                    0xFF6C63FF),
+                                ? const Color(0xFFA29BFE)
+                                : const Color(0xFF6C63FF),
                           ),
                         ),
 
@@ -537,13 +540,10 @@ class _MyHomePageState extends State<MyHomePage>
                           shrinkWrap: true,
                           physics:
                               const NeverScrollableScrollPhysics(),
-                          itemCount:
-                              chosenTimes.length,
-                          itemBuilder:
-                              (context, index) {
+                          itemCount: chosenTimes.length,
+                          itemBuilder: (context, index) {
                             return ListTile(
-                              contentPadding:
-                                  EdgeInsets.zero,
+                              contentPadding: EdgeInsets.zero,
                               title: Text(
                                 _isEnglish
                                     ? 'Time ${index + 1}'
@@ -552,31 +552,24 @@ class _MyHomePageState extends State<MyHomePage>
                               subtitle: Text(
                                 chosenTimes[index],
                               ),
-                              trailing:
-                                  IconButton(
+                              trailing: IconButton(
                                 icon: Icon(
                                   Icons.access_time,
                                   color: _isDarkMode
-                                      ? const Color(
-                                          0xFFA29BFE)
-                                      : const Color(
-                                          0xFF6C63FF),
+                                      ? const Color(0xFFA29BFE)
+                                      : const Color(0xFF6C63FF),
                                 ),
-                                onPressed:
-                                    () async {
+                                onPressed: () async {
                                   final picked =
                                       await showTimePicker(
                                     context: context,
-                                    initialTime:
-                                        TimeOfDay.now(),
+                                    initialTime: TimeOfDay.now(),
                                   );
 
                                   if (picked != null) {
                                     setDialogState(() {
-                                      chosenTimes[
-                                              index] =
-                                          _formatTimeOfDay(
-                                              picked);
+                                      chosenTimes[index] =
+                                          _formatTimeOfDay(picked);
                                     });
                                   }
                                 },
@@ -592,13 +585,10 @@ class _MyHomePageState extends State<MyHomePage>
                               ? 'Notification Sound'
                               : 'صوت التنبيه',
                           style: TextStyle(
-                            fontWeight:
-                                FontWeight.bold,
+                            fontWeight: FontWeight.bold,
                             color: _isDarkMode
-                                ? const Color(
-                                    0xFFA29BFE)
-                                : const Color(
-                                    0xFF6C63FF),
+                                ? const Color(0xFFA29BFE)
+                                : const Color(0xFF6C63FF),
                           ),
                         ),
 
@@ -606,44 +596,87 @@ class _MyHomePageState extends State<MyHomePage>
 
                         DropdownButtonFormField<String>(
                           value: chosenSound,
-                          decoration:
-                              InputDecoration(
+                          dropdownColor: _isDarkMode
+                              ? const Color(0xFF2C2C3E)
+                              : Colors.white,
+                          decoration: InputDecoration(
                             labelText: _isEnglish
                                 ? 'Choose Sound'
                                 : 'اختاري الصوت',
                           ),
-                          items: _sounds.map(
-                            (sound) {
-                              final number =
-                                  sound.replaceAll(
-                                      'sound_', '');
+                          items: _sounds.map((sound) {
+                            final number =
+                                sound.replaceAll('sound_', '');
 
-                              return DropdownMenuItem(
-                                value: sound,
-                                child: Text(
-                                  _isEnglish
-                                      ? 'Sound $number'
-                                      : 'الصوت $number',
-                                ),
-                              );
-                            },
-                          ).toList(),
+                            return DropdownMenuItem<String>(
+                              value: sound,
+                              child: Text(
+                                _isEnglish
+                                    ? 'Sound $number'
+                                    : 'الصوت $number',
+                              ),
+                            );
+                          }).toList(),
                           onChanged: (value) {
                             if (value != null) {
                               setDialogState(() {
-                                chosenSound =
-                                    value;
+                                chosenSound = value;
                               });
+
+                              _stopPreview();
                             }
                           },
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  _previewSound(chosenSound);
+                                },
+                                icon: const Icon(
+                                  Icons.play_arrow,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  _isEnglish
+                                      ? 'Listen to Sound'
+                                      : 'استمع للصوت',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isDarkMode
+                                      ? const Color(0xFFA29BFE)
+                                      : const Color(0xFF6C63FF),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              tooltip: _isEnglish
+                                  ? 'Stop'
+                                  : 'إيقاف',
+                              onPressed: _stopPreview,
+                              icon: Icon(
+                                Icons.stop_circle,
+                                color: _isDarkMode
+                                    ? const Color(0xFFA29BFE)
+                                    : const Color(0xFF6C63FF),
+                              ),
+                            ),
+                          ],
                         ),
 
                         const SizedBox(height: 16),
 
                         Row(
                           mainAxisAlignment:
-                              MainAxisAlignment
-                                  .spaceBetween,
+                              MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
                               child: Text(
@@ -657,19 +690,14 @@ class _MyHomePageState extends State<MyHomePage>
                                 final picked =
                                     await showDatePicker(
                                   context: context,
-                                  initialDate:
-                                      chosenDate,
-                                  firstDate:
-                                      DateTime(2020),
-                                  lastDate:
-                                      DateTime(2100),
+                                  initialDate: chosenDate,
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2100),
                                 );
 
-                                if (picked !=
-                                    null) {
+                                if (picked != null) {
                                   setDialogState(() {
-                                    chosenDate =
-                                        picked;
+                                    chosenDate = picked;
                                   });
                                 }
                               },
@@ -687,27 +715,26 @@ class _MyHomePageState extends State<MyHomePage>
                 ),
                 actions: [
                   TextButton(
-                    onPressed: () =>
-                        Navigator.pop(context),
+                    onPressed: () async {
+                      await _stopPreview();
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    },
                     child: Text(
-                      _isEnglish
-                          ? 'Cancel'
-                          : 'إلغاء',
+                      _isEnglish ? 'Cancel' : 'إلغاء',
                     ),
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                      if (titleController.text
-                          .trim()
-                          .isEmpty) {
+                      if (titleController.text.trim().isEmpty) {
                         return;
                       }
 
+                      await _stopPreview();
+
                       int target =
-                          int.tryParse(
-                                targetController
-                                    .text,
-                              ) ??
+                          int.tryParse(targetController.text) ??
                               chosenTimes.length;
 
                       if (target < 1) {
@@ -725,68 +752,48 @@ class _MyHomePageState extends State<MyHomePage>
                           id: DateTime.now()
                               .millisecondsSinceEpoch
                               .toString(),
-                          title: titleController
-                              .text
-                              .trim(),
+                          title: titleController.text.trim(),
                           date: chosenDate,
                           times: chosenTimes,
                           targetCount: target,
                           currentCount: 0,
-                          frequency:
-                              chosenFrequency,
-                          soundName:
-                              chosenSound,
+                          frequency: chosenFrequency,
+                          soundName: chosenSound,
                         );
 
                         setState(() {
-                          _habits.add(
-                            savedHabit,
-                          );
+                          _habits.add(savedHabit);
                         });
                       } else {
-                        await _cancelHabitNotifications(
-                            habitToEdit);
+                        await _cancelHabitNotifications(habitToEdit);
 
                         habitToEdit.title =
-                            titleController.text
-                                .trim();
-                        habitToEdit.times =
-                            chosenTimes;
-                        habitToEdit.date =
-                            chosenDate;
-                        habitToEdit.targetCount =
-                            target;
-                        habitToEdit.frequency =
-                            chosenFrequency;
-                        habitToEdit.soundName =
-                            chosenSound;
+                            titleController.text.trim();
 
-                        if (habitToEdit
-                                .currentCount >
-                            target) {
-                          habitToEdit.currentCount =
-                              target;
+                        habitToEdit.times = chosenTimes;
+                        habitToEdit.date = chosenDate;
+                        habitToEdit.targetCount = target;
+                        habitToEdit.frequency = chosenFrequency;
+                        habitToEdit.soundName = chosenSound;
+
+                        if (habitToEdit.currentCount > target) {
+                          habitToEdit.currentCount = target;
                         }
 
-                        savedHabit =
-                            habitToEdit;
+                        savedHabit = habitToEdit;
 
                         setState(() {});
                       }
 
                       await _saveHabits();
-
-                      await _scheduleHabitNotifications(
-                          savedHabit);
+                      await _scheduleHabitNotifications(savedHabit);
 
                       if (!mounted) return;
 
                       Navigator.pop(context);
                     },
                     child: Text(
-                      _isEnglish
-                          ? 'Save'
-                          : 'حفظ',
+                      _isEnglish ? 'Save' : 'حفظ',
                     ),
                   ),
                 ],
@@ -800,8 +807,7 @@ class _MyHomePageState extends State<MyHomePage>
 
   void _completeHabit(Habit habit) {
     setState(() {
-      if (habit.currentCount <
-          habit.targetCount) {
+      if (habit.currentCount < habit.targetCount) {
         habit.currentCount++;
       } else {
         habit.currentCount = 0;
@@ -811,16 +817,13 @@ class _MyHomePageState extends State<MyHomePage>
     _saveHabits();
   }
 
-  double _calculateProgress(
-    List<Habit> habits,
-  ) {
+  double _calculateProgress(List<Habit> habits) {
     if (habits.isEmpty) {
       return 0;
     }
 
-    int completed = habits
-        .where((habit) => habit.isCompleted)
-        .length;
+    int completed =
+        habits.where((habit) => habit.isCompleted).length;
 
     return completed / habits.length;
   }
@@ -829,32 +832,24 @@ class _MyHomePageState extends State<MyHomePage>
     List<Habit> habits,
     String title,
   ) {
-    final progress =
-        _calculateProgress(habits);
+    final progress = _calculateProgress(habits);
+    final percentage = (progress * 100).round();
 
-    final percentage =
-        (progress * 100).round();
-
-    final completed = habits
-        .where((h) => h.isCompleted)
-        .length;
+    final completed =
+        habits.where((h) => h.isCompleted).length;
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.only(
-        bottom: 12,
-      ),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _isDarkMode
             ? const Color(0xFF1E1E2C)
             : Colors.white,
-        borderRadius:
-            BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment:
@@ -863,8 +858,7 @@ class _MyHomePageState extends State<MyHomePage>
               Text(
                 title,
                 style: TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                   color: _isDarkMode
                       ? Colors.white
                       : Colors.black87,
@@ -873,15 +867,12 @@ class _MyHomePageState extends State<MyHomePage>
               Text(
                 '$percentage%',
                 style: TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                   color: progress == 1
                       ? Colors.green
                       : (_isDarkMode
-                          ? const Color(
-                              0xFFA29BFE)
-                          : const Color(
-                              0xFF6C63FF)),
+                          ? const Color(0xFFA29BFE)
+                          : const Color(0xFF6C63FF)),
                 ),
               ),
             ],
@@ -890,8 +881,7 @@ class _MyHomePageState extends State<MyHomePage>
           LinearProgressIndicator(
             value: progress,
             minHeight: 8,
-            borderRadius:
-                BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8),
           ),
           const SizedBox(height: 6),
           Text(
@@ -911,9 +901,8 @@ class _MyHomePageState extends State<MyHomePage>
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: _isEnglish
-          ? TextDirection.ltr
-          : TextDirection.rtl,
+      textDirection:
+          _isEnglish ? TextDirection.ltr : TextDirection.rtl,
       child: Theme(
         data: _isDarkMode
             ? ThemeData.dark().copyWith(
@@ -921,10 +910,8 @@ class _MyHomePageState extends State<MyHomePage>
                     const Color(0xFF12121A),
                 colorScheme:
                     const ColorScheme.dark(
-                  primary:
-                      Color(0xFFA29BFE),
-                  surface:
-                      Color(0xFF1E1E2C),
+                  primary: Color(0xFFA29BFE),
+                  surface: Color(0xFF1E1E2C),
                 ),
               )
             : ThemeData.light().copyWith(
@@ -932,8 +919,7 @@ class _MyHomePageState extends State<MyHomePage>
                     const Color(0xFFF9F9FB),
                 colorScheme:
                     const ColorScheme.light(
-                  primary:
-                      Color(0xFF6C63FF),
+                  primary: Color(0xFF6C63FF),
                   surface: Colors.white,
                 ),
               ),
@@ -961,8 +947,7 @@ class _MyHomePageState extends State<MyHomePage>
                 ),
                 onPressed: () {
                   setState(() {
-                    _isEnglish =
-                        !_isEnglish;
+                    _isEnglish = !_isEnglish;
                   });
 
                   _savePreferences();
@@ -977,8 +962,7 @@ class _MyHomePageState extends State<MyHomePage>
                 ),
                 onPressed: () {
                   setState(() {
-                    _isDarkMode =
-                        !_isDarkMode;
+                    _isDarkMode = !_isDarkMode;
                   });
 
                   _savePreferences();
@@ -986,108 +970,77 @@ class _MyHomePageState extends State<MyHomePage>
               ),
             ],
             bottom: TabBar(
-              controller:
-                  _tabController,
-              indicatorColor:
-                  Colors.white,
-              labelColor:
-                  Colors.white,
-              unselectedLabelColor:
-                  Colors.white70,
+              controller: _tabController,
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
               tabs: [
                 Tab(
-                  text: _isEnglish
-                      ? 'Daily'
-                      : 'اليومي',
+                  text: _isEnglish ? 'Daily' : 'اليومي',
                 ),
                 Tab(
-                  text: _isEnglish
-                      ? 'Monthly'
-                      : 'الشهري',
+                  text: _isEnglish ? 'Monthly' : 'الشهري',
                 ),
                 Tab(
-                  text: _isEnglish
-                      ? 'Yearly'
-                      : 'السنوي',
+                  text: _isEnglish ? 'Yearly' : 'السنوي',
                 ),
               ],
             ),
           ),
           body: _isLoading
               ? Center(
-                  child:
-                      CircularProgressIndicator(
+                  child: CircularProgressIndicator(
                     color: _isDarkMode
-                        ? const Color(
-                            0xFFA29BFE)
-                        : const Color(
-                            0xFF6C63FF),
+                        ? const Color(0xFFA29BFE)
+                        : const Color(0xFF6C63FF),
                   ),
                 )
               : TabBarView(
-                  controller:
-                      _tabController,
+                  controller: _tabController,
                   children: [
                     _buildDayTab(),
                     _buildMonthTab(),
                     _buildYearTab(),
                   ],
                 ),
-          floatingActionButton:
-              _isLoading
-                  ? null
-                  : FloatingActionButton(
-                      backgroundColor:
-                          _isDarkMode
-                              ? const Color(
-                                  0xFFA29BFE)
-                              : const Color(
-                                  0xFF6C63FF),
-                      onPressed: () =>
-                          _showHabitDialog(),
-                      child: const Icon(
-                        Icons.add,
-                        color:
-                            Colors.white,
-                      ),
-                    ),
+          floatingActionButton: _isLoading
+              ? null
+              : FloatingActionButton(
+                  backgroundColor: _isDarkMode
+                      ? const Color(0xFFA29BFE)
+                      : const Color(0xFF6C63FF),
+                  onPressed: () => _showHabitDialog(),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                  ),
+                ),
         ),
       ),
     );
   }
 
   Widget _buildDayTab() {
-    final filteredHabits =
-        _habits.where((h) {
-      return h.frequency ==
-              HabitFrequency.daily &&
-          h.date.year ==
-              _todayDate.year &&
-          h.date.month ==
-              _todayDate.month &&
-          h.date.day ==
-              _todayDate.day;
+    final filteredHabits = _habits.where((h) {
+      return h.frequency == HabitFrequency.daily &&
+          h.date.year == _todayDate.year &&
+          h.date.month == _todayDate.month &&
+          h.date.day == _todayDate.day;
     }).toList();
 
     filteredHabits.sort(
       (a, b) => (a.isCompleted ? 1 : 0)
-          .compareTo(
-        b.isCompleted ? 1 : 0,
-      ),
+          .compareTo(b.isCompleted ? 1 : 0),
     );
 
     return Padding(
-      padding:
-          const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       child: Column(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildProgressHeader(
             filteredHabits,
-            _isEnglish
-                ? 'Today Progress'
-                : 'إنجاز اليوم',
+            _isEnglish ? 'Today Progress' : 'إنجاز اليوم',
           ),
           Expanded(
             child: filteredHabits.isEmpty
@@ -1096,21 +1049,17 @@ class _MyHomePageState extends State<MyHomePage>
                       _isEnglish
                           ? 'No tasks found.'
                           : 'لا توجد مهام.',
-                      style:
-                          const TextStyle(
+                      style: const TextStyle(
                         color: Colors.grey,
                       ),
                     ),
                   )
                 : ListView.builder(
-                    itemCount:
-                        filteredHabits.length,
-                    itemBuilder:
-                        (context, index) =>
-                            _buildHabitCard(
-                              filteredHabits[
-                                  index],
-                            ),
+                    itemCount: filteredHabits.length,
+                    itemBuilder: (context, index) =>
+                        _buildHabitCard(
+                      filteredHabits[index],
+                    ),
                   ),
           ),
         ],
@@ -1119,8 +1068,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   Widget _buildMonthTab() {
-    final daysInMonth =
-        DateUtils.getDaysInMonth(
+    final daysInMonth = DateUtils.getDaysInMonth(
       _displayedMonth.year,
       _displayedMonth.month,
     );
@@ -1133,43 +1081,32 @@ class _MyHomePageState extends State<MyHomePage>
         ).weekday %
             7;
 
-    final allMonthlyHabits =
-        _habits.where((h) {
-      return h.frequency ==
-              HabitFrequency.monthly &&
-          h.date.year ==
-              _displayedMonth.year &&
-          h.date.month ==
-              _displayedMonth.month;
+    final allMonthlyHabits = _habits.where((h) {
+      return h.frequency == HabitFrequency.monthly &&
+          h.date.year == _displayedMonth.year &&
+          h.date.month == _displayedMonth.month;
     }).toList();
 
     final selectedDayMonthlyHabits =
         allMonthlyHabits.where((h) {
-      return h.date.day ==
-          _selectedMonthDate.day;
+      return h.date.day == _selectedMonthDate.day;
     }).toList();
 
     selectedDayMonthlyHabits.sort(
       (a, b) => (a.isCompleted ? 1 : 0)
-          .compareTo(
-        b.isCompleted ? 1 : 0,
-      ),
+          .compareTo(b.isCompleted ? 1 : 0),
     );
 
     allMonthlyHabits.sort(
       (a, b) => (a.isCompleted ? 1 : 0)
-          .compareTo(
-        b.isCompleted ? 1 : 0,
-      ),
+          .compareTo(b.isCompleted ? 1 : 0),
     );
 
     return Column(
       children: [
         _buildProgressHeader(
           allMonthlyHabits,
-          _isEnglish
-              ? 'Monthly Progress'
-              : 'إنجاز الشهر',
+          _isEnglish ? 'Monthly Progress' : 'إنجاز الشهر',
         ),
         Container(
           height: 50,
@@ -1177,30 +1114,24 @@ class _MyHomePageState extends State<MyHomePage>
               ? const Color(0xFF1E1E2C)
               : const Color(0xFFF0EFFE),
           child: ListView.builder(
-            scrollDirection:
-                Axis.horizontal,
+            scrollDirection: Axis.horizontal,
             itemCount: 12,
-            itemBuilder:
-                (context, index) {
-              final monthNumber =
-                  index + 1;
+            itemBuilder: (context, index) {
+              final monthNumber = index + 1;
 
               final isSelected =
-                  _displayedMonth.month ==
-                      monthNumber;
+                  _displayedMonth.month == monthNumber;
 
               return GestureDetector(
                 onTap: () {
                   setState(() {
-                    _displayedMonth =
-                        DateTime(
+                    _displayedMonth = DateTime(
                       _displayedMonth.year,
                       monthNumber,
                       1,
                     );
 
-                    _selectedMonthDate =
-                        DateTime(
+                    _selectedMonthDate = DateTime(
                       _displayedMonth.year,
                       monthNumber,
                       1,
@@ -1208,31 +1139,24 @@ class _MyHomePageState extends State<MyHomePage>
                   });
                 },
                 child: Container(
-                  alignment:
-                      Alignment.center,
+                  alignment: Alignment.center,
                   padding:
-                      const EdgeInsets
-                          .symmetric(
+                      const EdgeInsets.symmetric(
                     horizontal: 16,
                   ),
                   margin:
-                      const EdgeInsets
-                          .symmetric(
+                      const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 8,
                   ),
-                  decoration:
-                      BoxDecoration(
+                  decoration: BoxDecoration(
                     color: isSelected
                         ? (_isDarkMode
-                            ? const Color(
-                                0xFFA29BFE)
-                            : const Color(
-                                0xFF6C63FF))
+                            ? const Color(0xFFA29BFE)
+                            : const Color(0xFF6C63FF))
                         : Colors.transparent,
                     borderRadius:
-                        BorderRadius
-                            .circular(20),
+                        BorderRadius.circular(20),
                   ),
                   child: Text(
                     _isEnglish
@@ -1242,12 +1166,9 @@ class _MyHomePageState extends State<MyHomePage>
                       color: isSelected
                           ? Colors.white
                           : (_isDarkMode
-                              ? const Color(
-                                  0xFFA29BFE)
-                              : const Color(
-                                  0xFF6C63FF)),
-                      fontWeight:
-                          FontWeight.bold,
+                              ? const Color(0xFFA29BFE)
+                              : const Color(0xFF6C63FF)),
+                      fontWeight: FontWeight.bold,
                       fontSize: 13,
                     ),
                   ),
@@ -1257,26 +1178,20 @@ class _MyHomePageState extends State<MyHomePage>
           ),
         ),
         Expanded(
-          child:
-              SingleChildScrollView(
-            padding:
-                const EdgeInsets.all(12),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment:
                   CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.all(8),
-                  decoration:
-                      BoxDecoration(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
                     color: _isDarkMode
-                        ? const Color(
-                            0xFF1E1E2C)
+                        ? const Color(0xFF1E1E2C)
                         : Colors.white,
                     borderRadius:
-                        BorderRadius
-                            .circular(12),
+                        BorderRadius.circular(12),
                   ),
                   child: GridView.builder(
                     shrinkWrap: true,
@@ -1285,24 +1200,19 @@ class _MyHomePageState extends State<MyHomePage>
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 7,
-                      childAspectRatio:
-                          1.3,
+                      childAspectRatio: 1.3,
                       crossAxisSpacing: 4,
                       mainAxisSpacing: 4,
                     ),
                     itemCount:
-                        daysInMonth +
-                            firstDayOfWeek,
-                    itemBuilder:
-                        (context, index) {
-                      if (index <
-                          firstDayOfWeek) {
+                        daysInMonth + firstDayOfWeek,
+                    itemBuilder: (context, index) {
+                      if (index < firstDayOfWeek) {
                         return const SizedBox.shrink();
                       }
 
-                      final day = index -
-                              firstDayOfWeek +
-                          1;
+                      final day =
+                          index - firstDayOfWeek + 1;
 
                       final date = DateTime(
                         _displayedMonth.year,
@@ -1312,57 +1222,42 @@ class _MyHomePageState extends State<MyHomePage>
 
                       final isSelected =
                           date.day ==
-                                  _selectedMonthDate
-                                      .day &&
+                                  _selectedMonthDate.day &&
                               date.month ==
-                                  _selectedMonthDate
-                                      .month &&
+                                  _selectedMonthDate.month &&
                               date.year ==
-                                  _selectedMonthDate
-                                      .year;
+                                  _selectedMonthDate.year;
 
                       final isToday =
                           date.year ==
-                                  DateTime.now()
-                                      .year &&
+                                  DateTime.now().year &&
                               date.month ==
-                                  DateTime.now()
-                                      .month &&
+                                  DateTime.now().month &&
                               date.day ==
-                                  DateTime.now()
-                                      .day;
+                                  DateTime.now().day;
 
                       return GestureDetector(
                         onTap: () {
                           setState(() {
-                            _selectedMonthDate =
-                                date;
+                            _selectedMonthDate = date;
                           });
                         },
                         child: Container(
-                          decoration:
-                              BoxDecoration(
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(
-                                    0xFFD4D1FF)
+                                ? const Color(0xFFD4D1FF)
                                 : isToday
-                                    ? const Color(
-                                        0xFFEFEFFD)
+                                    ? const Color(0xFFEFEFFD)
                                     : (_isDarkMode
-                                        ? const Color(
-                                            0xFF181824)
-                                        : Colors
-                                            .grey
-                                            .shade100),
+                                        ? const Color(0xFF181824)
+                                        : Colors.grey.shade100),
                             borderRadius:
-                                BorderRadius
-                                    .circular(6),
+                                BorderRadius.circular(6),
                           ),
                           child: Center(
                             child: Text(
                               '$day',
-                              style:
-                                  const TextStyle(
+                              style: const TextStyle(
                                 fontWeight:
                                     FontWeight.bold,
                               ),
@@ -1373,34 +1268,27 @@ class _MyHomePageState extends State<MyHomePage>
                     },
                   ),
                 ),
-                const SizedBox(
-                    height: 16),
+                const SizedBox(height: 16),
                 Text(
                   _isEnglish
                       ? 'Tasks for selected day'
                       : 'مهام اليوم المختار',
                   style: TextStyle(
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                     color: _isDarkMode
-                        ? const Color(
-                            0xFFA29BFE)
-                        : const Color(
-                            0xFF6C63FF),
+                        ? const Color(0xFFA29BFE)
+                        : const Color(0xFF6C63FF),
                   ),
                 ),
                 const SizedBox(height: 8),
-                selectedDayMonthlyHabits
-                        .isEmpty
+                selectedDayMonthlyHabits.isEmpty
                     ? Center(
                         child: Text(
                           _isEnglish
                               ? 'No tasks.'
                               : 'لا توجد مهام.',
-                          style:
-                              const TextStyle(
-                            color:
-                                Colors.grey,
+                          style: const TextStyle(
+                            color: Colors.grey,
                           ),
                         ),
                       )
@@ -1409,33 +1297,25 @@ class _MyHomePageState extends State<MyHomePage>
                         physics:
                             const NeverScrollableScrollPhysics(),
                         itemCount:
-                            selectedDayMonthlyHabits
-                                .length,
-                        itemBuilder:
-                            (context, index) =>
-                                _buildHabitCard(
-                          selectedDayMonthlyHabits[
-                              index],
+                            selectedDayMonthlyHabits.length,
+                        itemBuilder: (context, index) =>
+                            _buildHabitCard(
+                          selectedDayMonthlyHabits[index],
                         ),
                       ),
-                const SizedBox(
-                    height: 16),
+                const SizedBox(height: 16),
                 const Divider(),
                 Text(
                   _isEnglish
                       ? 'All Monthly Tasks'
                       : 'جميع مهام الشهر',
                   style: const TextStyle(
-                    fontWeight:
-                        FontWeight.bold,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 ...allMonthlyHabits.map(
-                  (habit) =>
-                      _buildHabitCard(
-                    habit,
-                  ),
+                  (habit) => _buildHabitCard(habit),
                 ),
               ],
             ),
@@ -1446,8 +1326,7 @@ class _MyHomePageState extends State<MyHomePage>
   }
 
   Widget _buildYearTab() {
-    final currentYear =
-        DateTime.now().year;
+    final currentYear = DateTime.now().year;
 
     final years = List.generate(
       21,
@@ -1459,33 +1338,25 @@ class _MyHomePageState extends State<MyHomePage>
       years.sort();
     }
 
-    final yearFilteredHabits =
-        _habits.where((h) {
-      return h.frequency ==
-              HabitFrequency.yearly &&
-          h.date.year ==
-              _selectedYear;
+    final yearFilteredHabits = _habits.where((h) {
+      return h.frequency == HabitFrequency.yearly &&
+          h.date.year == _selectedYear;
     }).toList();
 
     yearFilteredHabits.sort(
       (a, b) => (a.isCompleted ? 1 : 0)
-          .compareTo(
-        b.isCompleted ? 1 : 0,
-      ),
+          .compareTo(b.isCompleted ? 1 : 0),
     );
 
     return Padding(
-      padding:
-          const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,
         children: [
           _buildProgressHeader(
             yearFilteredHabits,
-            _isEnglish
-                ? 'Yearly Progress'
-                : 'إنجاز السنة',
+            _isEnglish ? 'Yearly Progress' : 'إنجاز السنة',
           ),
           Row(
             mainAxisAlignment:
@@ -1496,31 +1367,24 @@ class _MyHomePageState extends State<MyHomePage>
                     ? 'Select Year'
                     : 'اختر السنة',
                 style: TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
+                  fontWeight: FontWeight.bold,
                   color: _isDarkMode
-                      ? const Color(
-                          0xFFA29BFE)
-                      : const Color(
-                          0xFF6C63FF),
+                      ? const Color(0xFFA29BFE)
+                      : const Color(0xFF6C63FF),
                 ),
               ),
               DropdownButton<int>(
                 value: _selectedYear,
-                items: years.map(
-                  (year) {
-                    return DropdownMenuItem(
-                      value: year,
-                      child:
-                          Text('$year'),
-                    );
-                  },
-                ).toList(),
+                items: years.map((year) {
+                  return DropdownMenuItem(
+                    value: year,
+                    child: Text('$year'),
+                  );
+                }).toList(),
                 onChanged: (value) {
                   if (value != null) {
                     setState(() {
-                      _selectedYear =
-                          value;
+                      _selectedYear = value;
                     });
                   }
                 },
@@ -1529,31 +1393,25 @@ class _MyHomePageState extends State<MyHomePage>
           ),
           const SizedBox(height: 10),
           Expanded(
-            child:
-                yearFilteredHabits.isEmpty
-                    ? Center(
-                        child: Text(
-                          _isEnglish
-                              ? 'No yearly tasks.'
-                              : 'لا توجد مهام سنوية.',
-                          style:
-                              const TextStyle(
-                            color:
-                                Colors.grey,
-                          ),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount:
-                            yearFilteredHabits
-                                .length,
-                        itemBuilder:
-                            (context, index) =>
-                                _buildHabitCard(
-                          yearFilteredHabits[
-                              index],
-                        ),
+            child: yearFilteredHabits.isEmpty
+                ? Center(
+                    child: Text(
+                      _isEnglish
+                          ? 'No yearly tasks.'
+                          : 'لا توجد مهام سنوية.',
+                      style: const TextStyle(
+                        color: Colors.grey,
                       ),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount:
+                        yearFilteredHabits.length,
+                    itemBuilder: (context, index) =>
+                        _buildHabitCard(
+                      yearFilteredHabits[index],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -1566,14 +1424,9 @@ class _MyHomePageState extends State<MyHomePage>
       color: _isDarkMode
           ? const Color(0xFF1E1E2C)
           : Colors.white,
-      margin:
-          const EdgeInsets.only(
-        bottom: 8,
-      ),
-      shape:
-          RoundedRectangleBorder(
-        borderRadius:
-            BorderRadius.circular(10),
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
       ),
       child: ListTile(
         contentPadding:
@@ -1585,30 +1438,23 @@ class _MyHomePageState extends State<MyHomePage>
           icon: Icon(
             habit.isCompleted
                 ? Icons.check_box
-                : Icons
-                    .check_box_outline_blank,
+                : Icons.check_box_outline_blank,
             color: habit.isCompleted
                 ? Colors.green
                 : (_isDarkMode
-                    ? const Color(
-                        0xFFA29BFE)
-                    : const Color(
-                        0xFF6C63FF)),
+                    ? const Color(0xFFA29BFE)
+                    : const Color(0xFF6C63FF)),
           ),
-          onPressed: () =>
-              _completeHabit(habit),
+          onPressed: () => _completeHabit(habit),
         ),
         title: Text(
           habit.title,
           style: TextStyle(
             fontSize: 15,
-            fontWeight:
-                FontWeight.w600,
-            decoration:
-                habit.isCompleted
-                    ? TextDecoration
-                        .lineThrough
-                    : TextDecoration.none,
+            fontWeight: FontWeight.w600,
+            decoration: habit.isCompleted
+                ? TextDecoration.lineThrough
+                : TextDecoration.none,
             color: habit.isCompleted
                 ? Colors.grey
                 : (_isDarkMode
@@ -1618,7 +1464,7 @@ class _MyHomePageState extends State<MyHomePage>
         ),
         subtitle: Text(
           _isEnglish
-              ? 'Date: ${habit.date.year}/${habit.date.month}/${habit.date.day} | ${habit.currentCount}/${habit.targetCount} | ${habit.soundName}'
+              ? 'Date: ${habit.date.year}/${habit.date.month}/${habit.date.day} | ${habit.currentCount}/${habit.targetCount} | Sound ${habit.soundName.replaceAll("sound_", "")}'
               : 'التاريخ: ${habit.date.year}/${habit.date.month}/${habit.date.day} | الإنجاز: ${habit.currentCount}/${habit.targetCount} | الصوت: ${habit.soundName.replaceAll("sound_", "")}',
           style: const TextStyle(
             fontSize: 11,
@@ -1626,21 +1472,16 @@ class _MyHomePageState extends State<MyHomePage>
           ),
         ),
         trailing: Row(
-          mainAxisSize:
-              MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              constraints:
-                  const BoxConstraints(),
+              constraints: const BoxConstraints(),
               padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 4,
-              ),
+                  const EdgeInsets.symmetric(horizontal: 4),
               icon: Icon(
                 habit.isCompleted
                     ? Icons.done
-                    : Icons
-                        .radio_button_unchecked,
+                    : Icons.radio_button_unchecked,
                 color: habit.isCompleted
                     ? Colors.green
                     : Colors.orange,
@@ -1658,16 +1499,12 @@ class _MyHomePageState extends State<MyHomePage>
               },
             ),
             IconButton(
-              constraints:
-                  const BoxConstraints(),
+              constraints: const BoxConstraints(),
               padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 4,
-              ),
+                  const EdgeInsets.symmetric(horizontal: 4),
               icon: const Icon(
                 Icons.edit,
-                color:
-                    Colors.blueAccent,
+                color: Colors.blueAccent,
                 size: 18,
               ),
               onPressed: () =>
@@ -1676,21 +1513,16 @@ class _MyHomePageState extends State<MyHomePage>
               ),
             ),
             IconButton(
-              constraints:
-                  const BoxConstraints(),
+              constraints: const BoxConstraints(),
               padding:
-                  const EdgeInsets.symmetric(
-                horizontal: 4,
-              ),
+                  const EdgeInsets.symmetric(horizontal: 4),
               icon: const Icon(
                 Icons.delete,
-                color:
-                    Colors.redAccent,
+                color: Colors.redAccent,
                 size: 18,
               ),
               onPressed: () async {
-                await _cancelHabitNotifications(
-                    habit);
+                await _cancelHabitNotifications(habit);
 
                 setState(() {
                   _habits.remove(habit);
@@ -1705,4 +1537,3 @@ class _MyHomePageState extends State<MyHomePage>
     );
   }
 }
-
