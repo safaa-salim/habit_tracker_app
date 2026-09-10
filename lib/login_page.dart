@@ -38,6 +38,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   String? _errorMessage;
+  bool _isLoading = true; // متغير لمعرفة حالة تحميل الحسابات المحفوظة
 
   @override
   void initState() {
@@ -45,20 +46,19 @@ class _LoginPageState extends State<LoginPage> {
     _loadSavedAccounts(); // تحميل الحسابات المخزنة مسبقاً عند فتح التطبيق
   }
 
-  // دالة لتحميل الحسابات المحفوظة من SharedPreferences
+  // دالة لتحميل الحسابات المحفوظة من SharedPreferences بشكل مضمون
   Future<void> _loadSavedAccounts() async {
     final prefs = await SharedPreferences.getInstance();
     final List<String>? savedAccountsStrings = prefs.getStringList('saved_accounts');
     
     if (savedAccountsStrings != null) {
       setState(() {
-        // تحويل النصوص المخزنة إلى قائمة من كائنات UserAccount وتجنب التكرار
         for (var accStr in savedAccountsStrings) {
-          // طريقة بسيطة لتحليل البيانات المحفوظة
           final parts = accStr.split('|');
           if (parts.length == 2) {
             String name = parts[0];
             String email = parts[1];
+            // التأكد من عدم تكرار الحساب في القائمة
             if (!registeredAccounts.any((acc) => acc.email == email)) {
               registeredAccounts.add(UserAccount(name: name, email: email));
             }
@@ -66,6 +66,10 @@ class _LoginPageState extends State<LoginPage> {
         }
       });
     }
+    
+    setState(() {
+      _isLoading = false; // انتهى التحميل
+    });
   }
 
   @override
@@ -85,7 +89,6 @@ class _LoginPageState extends State<LoginPage> {
       );
 
       if (accountExists) {
-        // حفظ الجلسة الحالية للمستخدم حتى يفتح التطبيق مباشرة في المرة القادمة إن أردت
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('current_user_name', enteredName);
         await prefs.setString('current_user_email', enteredEmail);
@@ -110,6 +113,15 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // إظهار مؤشر تحميل أثناء استرجاع الحسابات المخزنة لتجنب أي أخطاء
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
