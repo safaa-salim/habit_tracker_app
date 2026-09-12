@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // حزمة الفايربيس الأساسية
+import 'firebase_options.dart'; // ملف الإعدادات الذي تم توليده تلقائياً
 import 'login_page.dart';
 import 'notification_service.dart';
 
 void main() async {
+  // التأكد من تهيئة بيئة الويدجتس
   WidgetsFlutterBinding.ensureInitialized();
 
+  // تهيئة الفايربيس باستخدام الإعدادات الخاصة بالمنصة
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // تهيئة الإشعارات القديمة الخاصة بك
   await NotificationService.initialize();
 
   runApp(const HabitTrackerApp());
